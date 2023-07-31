@@ -22,12 +22,19 @@ struct OperacaoMatematica {
     Func Operacao;
 };
 
+struct OperacaoMatematica operacoes[] = {
+    {'+', soma},
+    {'-', subt},
+    {'*', mult},
+    {'/', divs},
+};
+
 int
 main(int argc, char *argv[])
 {
     char equacao[MAXIMO];
 
-    printf("Bem vindo à calculadora v3!\n");
+    printf("Bem vindo à calculadora v4!\n");
     printf("Digite a sua equacao: ");
     fgets(equacao, MAXIMO, stdin);
     
@@ -71,11 +78,12 @@ resolver_equacao(char equacao[])
 
         } else if (isdigit(equacao[i])) {
             float num = 0;
-
-            while (isdigit(equacao[i])) {       /* necessário p caso o número tenha + de 1 dígito */
-                num = num * 10 + (equacao[i] - '0');        /* transforma o caracter equacao[i] em um número */
+            char num_string[MAXIMO] = " ";
+            while (isdigit(equacao[i]) || equacao[i] == '.') {       /* checa se o caracter é um dígito ou um ponto (pra nums quebrados) */
+                strncat(num_string, &equacao[i], 1);                 /* coloca o número numa string */
                 i++;
             }
+            num = atof(num_string);                                 /* transforma a string em float, p realizar operação c/ nums quebrados */
             i--;
             
             stack[++stack_top] = num;       /* coloca o número obtido no topo do stack */
