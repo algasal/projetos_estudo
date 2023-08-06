@@ -2,64 +2,60 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 #define MAXIMO 100
 
-/* Calculadora simples, que executa uma ou mais equações, respeitando a prioridade das operações e parênteses */
+/* Calculadora simples */
 
 float calculadora(float x, float y, char sinal);
-float resolver_equacao(char equacao[]);
+float resolver_equacao(const char *equacao);
 int precedencia_sinais(char sinal);
 int sinal_valido(char sinal);
-float soma(float x, float y) { return x + y; }
-float subt(float x, float y) { return x - y; }
-float mult(float x, float y) { return x * y; }
-float divs(float x, float y) { return x / y; }
-typedef float (*Func)(float, float);
-
-/* struct que guarda a chave (ex '+') e um pointeiro pra uma função (ex 'soma'), simulando um dicionário */
-struct OperacaoMatematica {
-    char Sinal;
-    Func Operacao;
-};
-
-struct OperacaoMatematica operacoes[] = {
-    {'+', soma},
-    {'-', subt},
-    {'*', mult},
-    {'/', divs},
-};
 
 int
 main(int argc, char *argv[])
 {
-    char equacao[MAXIMO];
+    int i = 0;
+    char c, *equacao = (char *)malloc(sizeof(char));
 
-    printf("Bem vindo à calculadora v4!\n");
+    printf("Bem vindo à calculadora v5!\n");
     printf("Digite a sua equacao: ");
-    fgets(equacao, MAXIMO, stdin);
-    
+    while ((c = getc(stdin)) != '\n') {
+        equacao[i++] = c;
+        if ((equacao = realloc(equacao, (i+1) * sizeof(char))) == NULL) {
+            fprintf(stderr, "Falha na alocação de memória.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    equacao[i] = '\0';
     printf("resultado: %.1f\n", resolver_equacao(equacao));
-
+    
+    free(equacao);
     return 0;
 }
 
 /* separa a equação em pedaços e transforma os números em float pra poder executar o cálculo */
 float
-resolver_equacao(char equacao[]) 
+resolver_equacao(const char *equacao) 
 {
-    float x, y, resultado, stack[MAXIMO];
-    char sinal, stack_sinais[MAXIMO];
-    int i, stack_top = -1, sinais_top = -1;
+    int j = 0, k = 0, stack_top = -1, sinais_top = -1;
+    float x, y, resultado, *stack = (float *)malloc(j * sizeof(float));
+    char sinal, *stack_sinais = (char *)malloc(sizeof(char));
     
-    for (i = 0; equacao[i]; i++) {
-        if (equacao[i] == ' ') {    /* se o caracter for um espaço em branco, pula */
+    for (int i = 0; equacao[i]; i++) {
+        if (equacao[i] == ' ') {
             continue;
-        } else if (equacao[i] == '(') {
+        }
+        else if (equacao[i] == '(') {
             int i_interno = i + 1;              /* contador interno pq eu me perdi usando só o i */
             int parentese_abertura = 1;         /* se o caracter for um parentese, guarda o número de parenteses de abertura */
             int parentese_fechamento = 0;       /* de modo a identificar em qual parentese de fechamento terminar a string */
-            char equacao_interna[MAXIMO] = " "; /* pro caso de haver várias equações entre parenteses */
-            
+            char equacao_interna[sizeof(equacao) / sizeof(float)] = " "; /* pro caso de haver várias equações entre parenteses */
+
+            if ((stack = realloc(stack, (j+1) * sizeof(float))) == NULL) {
+                fprintf(stderr, "Erro na alocação de memória.\n");
+                exit(EXIT_FAILURE);
+            }
             while (equacao[i_interno] != '\0') {
                 if (equacao[i_interno] == '(') {
                     parentese_abertura++;
@@ -75,18 +71,25 @@ resolver_equacao(char equacao[])
 
             float num = resolver_equacao(equacao_interna); /* resolve recursivamente a nova equação */
             stack[++stack_top] = num;                      /* e coloca o resultado no topo do stack */ 
-
+            j++;
         } else if (isdigit(equacao[i])) {
             float num = 0;
             char num_string[MAXIMO] = " ";
+
+            if ((stack = realloc(stack, (j+1) * sizeof(float))) == NULL) {
+                fprintf(stderr, "Erro na alocação de memória.\n");
+                exit(EXIT_FAILURE);
+            }
+
             while (isdigit(equacao[i]) || equacao[i] == '.') {       /* checa se o caracter é um dígito ou um ponto (pra nums quebrados) */
                 strncat(num_string, &equacao[i], 1);                 /* coloca o número numa string */
                 i++;
             }
-            num = atof(num_string);                                 /* transforma a string em float, p realizar operação c/ nums quebrados */
             i--;
+            num = atof(num_string);                                 /* transforma a string em float, p realizar operação c/ nums quebrados */
             
-            stack[++stack_top] = num;       /* coloca o número obtido no topo do stack */
+            stack[++stack_top] = num;                               /* coloca o número obtido no topo do stack */
+            j++;
         } else if (sinal_valido(equacao[i])) {
             while(sinais_top >= 0 && precedencia_sinais(stack_sinais[sinais_top]) >= precedencia_sinais(equacao[i])) {
                  x = stack[stack_top--];                            /* se a precedência do sinal no topo for maior que a do sinal lido, */
@@ -95,9 +98,17 @@ resolver_equacao(char equacao[])
                  stack[++stack_top] = calculadora(x, y, sinal);     /* lido no topo do stack de sinais */
             }
             stack_sinais[++sinais_top] = equacao[i];
+            k++;
+
+            if ((stack_sinais = realloc(stack_sinais, (k+1) * sizeof(char))) == NULL) {
+                fprintf(stderr, "Erro na alocação de memória.\n");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            fprintf(stderr, "Operação inválida.\n");
+            exit(EXIT_FAILURE);
         }
     }
-
     /* faz os cálculos das equações que sobrarem */
     while (sinais_top >= 0) {
         y = stack[stack_top--];
@@ -107,6 +118,8 @@ resolver_equacao(char equacao[])
     }
 
     resultado = stack[0];
+    free(stack);
+    free(stack_sinais);
     return resultado;
 }
 
@@ -114,7 +127,7 @@ resolver_equacao(char equacao[])
 int
 sinal_valido(char sinal)
 {
-    return sinal == '+' || sinal == '-' || sinal == '*' || sinal == '/';
+    return sinal == '+' || sinal == '-' || sinal == '*' || sinal == '/' || sinal == '%' || sinal == '^';
 }
 
 /* checa a precedência das equações */
@@ -122,7 +135,8 @@ int
 precedencia_sinais(char sinal)
 {
     if (sinal == '+' || sinal == '-') return 1;
-    else if (sinal == '*' || sinal == '/') return 2;
+    else if (sinal == '*' || sinal == '/' || sinal == '%') return 2;
+    else if (sinal == '^') return 3;
     
     return 0;
 }
@@ -131,17 +145,29 @@ precedencia_sinais(char sinal)
 float
 calculadora(float x, float y, char sinal)
 {
-    struct OperacaoMatematica operacoes[] = {
-        {'+', soma},
-        {'-', subt},
-        {'*', mult},
-        {'/', divs},
-    };
+    switch(sinal) {
+        case '+':
+            return x + y;
+        case '-':
+            return x - y;
+        case '*':
+            return x * y;
+        case '/':
+            return x / y;
+        case '%':
+            int res = (x == (int) x && y == (int) y) ? (int) x % (int) y : 0;
+            if (res == 0) goto erro_potencia;
+            else return res;
+        case '^':
+            return pow(x,y); 
+        default:
+            fprintf(stderr, "Operação inexistente: %c\n", sinal);
+            exit(EXIT_FAILURE);
 
-    /* loopa pela array operacoes[] pra encontrar a operação correspondente ao sinal */
-    for (int i = 0; i < sizeof(operacoes) / sizeof(operacoes[0]); i++) {
-        if (operacoes[i].Sinal == sinal) {
-            return operacoes[i].Operacao(x, y);
-        }
+        erro_potencia:
+            fprintf(stderr, "Operação de módulo permitida somente com inteiros.\n");
+            exit(EXIT_FAILURE);
     }
 }
+
+
